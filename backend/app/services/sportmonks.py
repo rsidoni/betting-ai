@@ -1,35 +1,58 @@
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
+from functools import lru_cache
 
-SPORTMONKS_KEY = "gXDoV9IT5WDwl7eECjEDjZLSfuYrRlaHeyDzwE6rmXwq5khisVYOaWPnDG8G"
-
-
-def get_dates():
-    today = datetime.utcnow().date()
-    return [
-        str(today - timedelta(days=1)),
-        str(today),
-        str(today + timedelta(days=1))
-    ]
+from app.config import SPORTMONKS_API_KEY, BASE_URL
 
 
-def fetch_by_date(date_str):
-    url = f"https://api.sportmonks.com/v3/football/fixtures/date/{date_str}"
+def _parse_date(date_str: str):
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+    except Exception:
+        return None
+
+
+@lru_cache(maxsize=1)
+def fetch_upcoming_fixtures():
+
+    url = f"{BASE_URL}/fixtures"
+
+    params = {
+        "api_token": SPORTMONKS_API_KEY,
+        "include": "league;participants",
+        "per_page": 50
+    }
 
     try:
-        r = requests.get(
-            url,
-            params={"api_token": SPORTMONKS_KEY},
-            timeout=10
-        )
+        response = requests.get(url, params=params, timeout=20)
 
-        data = r.json()
-
-        if "data" not in data:
+        if response.status_code != 200:
+            print("SportMonks Error:", response.status_code, response.text)
             return []
 
-        return data["data"]
+        data = response.json().get("data", [])
+
+        now = datetime.now(timezone.utc)
+
+        future_matches = []
+
+        for match in data:
+
+            start = _parse_date(match.get("starting_at"))
+
+            # se non riesce a leggere la data → lo scarta
+            if start is None:
+                continue
+
+            # solo match futuri
+            if start >= now:
+                future_matches.append(match)
+
+        # ordinamento per data
+        future_matches.sort(key=lambda x: x.get("starting_at", ""))
+
+        return future_matches
 
     except Exception as e:
-        print("API ERROR:", e)
+        print("SportMonks Exception:", e)
         return []

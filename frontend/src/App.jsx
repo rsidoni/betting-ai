@@ -1,120 +1,111 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
-function App() {
+const API_BASE =
+  import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
+function App() {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-
-  // 🔥 AUTO-DETECT: PC o TELEFONO
-  const API_BASE =
-    window.location.hostname === "localhost"
-      ? "http://127.0.0.1:8000"
-      : "http://192.168.1.8:8000";
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-
-    axios
-      .get(`${API_BASE}/predictions`)
-      .then((res) => {
-
-        console.log("API RESPONSE:", res.data);
-
-        setMatches(res.data.data || []);
-        setLoading(false);
-
-      })
-      .catch((err) => {
-
-        console.error("API ERROR:", err);
-
-        setError(true);
-        setLoading(false);
-
-      });
-
+    fetchMatches();
   }, []);
 
-  if (loading) return <h2>Loading...</h2>;
+  const fetchMatches = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  if (error) return <h2>Errore caricamento partite</h2>;
+      const response = await axios.get(`${API_BASE}/matches`, {
+        timeout: 15000,
+      });
+
+      if (response.data?.matches) {
+        setMatches(response.data.matches);
+      } else {
+        setMatches([]);
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Errore caricamento partite");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div style={{ padding: "20px", fontFamily: "Arial" }}>
+    <div style={{ padding: 20, fontFamily: "Arial" }}>
+      <h1>Betting AI</h1>
 
-      <h1>⚽ Betting AI</h1>
+      {loading && <p>Caricamento...</p>}
 
-      {matches.length === 0 && (
+      {error && (
+        <div
+          style={{
+            background: "#ffebee",
+            padding: 10,
+            marginBottom: 20,
+            borderRadius: 8,
+            color: "red",
+          }}
+        >
+          {error}
+        </div>
+      )}
+
+      {!loading && matches.length === 0 && (
         <p>Nessuna partita trovata</p>
       )}
 
-      {matches.map((match) => {
+      {matches.map((match) => (
+        <div
+          key={match.id}
+          style={{
+            border: "1px solid #ccc",
+            padding: 15,
+            marginBottom: 15,
+            borderRadius: 10,
+          }}
+        >
+          <h3>
+            {match.home_team} vs {match.away_team}
+          </h3>
 
-        const markets = match.markets;
+          <p>
+            <strong>League:</strong> {match.league}
+          </p>
 
-        return (
-          <div
-            key={match.id}
-            style={{
-              border: "1px solid #ddd",
-              borderRadius: "10px",
-              padding: "15px",
-              marginBottom: "15px"
-            }}
-          >
+          <p>
+            <strong>Date:</strong> {match.date}
+          </p>
 
-            {/* MATCH INFO */}
-            <h3>{match.name}</h3>
+          <hr />
 
-            <p>📅 {match.starting_at}</p>
+          <p>
+            <strong>Pronostico 1X2</strong>
+          </p>
 
-            <p>🏁 {match.result_info || "Match non concluso"}</p>
+          <ul>
+            <li>Home: {match.prediction?.home}%</li>
+            <li>Draw: {match.prediction?.draw}%</li>
+            <li>Away: {match.prediction?.away}%</li>
+          </ul>
 
-            {/* PREDICTION */}
-            <p>
-              Home: {match.prediction.home_win}% |{" "}
-              Away: {match.prediction.away_win}% |{" "}
-              Draw: {match.prediction.draw}%
-            </p>
+          <p>
+            <strong>xG</strong><br />
+            Home: {match.prediction?.home_xg}<br />
+            Away: {match.prediction?.away_xg}
+          </p>
 
-            {/* MARKETS */}
-            {markets && (
-              <div
-                style={{
-                  marginTop: "10px",
-                  padding: "10px",
-                  background: "#f5f5f5",
-                  borderRadius: "8px"
-                }}
-              >
-
-                <h4>📊 Markets</h4>
-
-                <p>
-                  1X2 → H {markets["1x2"].home}% |{" "}
-                  D {markets["1x2"].draw}% |{" "}
-                  A {markets["1x2"].away}%
-                </p>
-
-                <p>
-                  Over 2.5 → YES {markets.over_2_5.yes}% |{" "}
-                  NO {markets.over_2_5.no}%
-                </p>
-
-                <p>
-                  BTTS → YES {markets.btts.yes}% |{" "}
-                  NO {markets.btts.no}%
-                </p>
-
-              </div>
-            )}
-
-          </div>
-        );
-
-      })}
-
+          <p>
+            <strong>Over 2.5</strong><br />
+            Yes: {match.prediction?.over_2_5?.yes}%<br />
+            No: {match.prediction?.over_2_5?.no}%
+          </p>
+        </div>
+      ))}
     </div>
   );
 }

@@ -1,24 +1,59 @@
-# Logs
-logs
-*.log
+
+# =========================
+# NODE / FRONTEND
+# =========================
+node_modules
+dist
+dist-ssr
+*.local
+
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# =========================
+# ENV FILES (CRITICO)
+# =========================
+.env
+.env.*
+!.env.example
 
-# Editor directories and files
+# =========================
+# PYTHON BACKEND
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# FastAPI / testing
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# =========================
+# EDITORS
+# =========================
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
+
+# =========================
+# OS FILES
+# =========================
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+Thumbs.db
+
+# =========================
+# LOGS
+# =========================
+logs
+*.log

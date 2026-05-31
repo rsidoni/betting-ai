@@ -1,95 +1,64 @@
-def calculate_prediction(match):
+import math
 
-    home = match.get("home_team_id", 1)
-    away = match.get("away_team_id", 1)
 
-    # =========================
-    # BASE RATINGS (SEED)
-    # =========================
-    base_home = 50
-    base_away = 50
-    base_draw = 0
+def poisson_probability(lmbda, k):
+    return (lmbda ** k * math.exp(-lmbda)) / math.factorial(k)
 
-    # =========================
-    # HOME ADVANTAGE
-    # =========================
-    home_advantage = 6
 
-    # =========================
-    # FORM SIMULATA (SAFE MODE)
-    # =========================
-    home_form = (home % 7) + 1
-    away_form = (away % 7) + 1
+def expected_goals(team_strength, opponent_strength):
+    return round((team_strength * 0.7 + opponent_strength * 0.3), 2)
 
-    form_diff = (home_form - away_form) * 2
 
-    # =========================
-    # GOAL IMPACT (MODELLO SEMPLICE)
-    # =========================
-    home_attack = (home % 10) + 1
-    away_attack = (away % 10) + 1
+def normalize_three_way(home, draw, away):
+    total = home + draw + away
 
-    home_defense = (away % 8) + 1
-    away_defense = (home % 8) + 1
+    if total <= 0:
+        return 33.33, 33.33, 33.33
 
-    goal_factor = (home_attack - away_attack) + (away_defense - home_defense)
+    return (
+        round(home / total * 100, 2),
+        round(draw / total * 100, 2),
+        round(away / total * 100, 2),
+    )
 
-    # =========================
-    # DRAW FACTOR (REALISTICO)
-    # =========================
-    draw_bias = 18 - abs(form_diff)
 
-    if draw_bias < 8:
-        draw_bias = 8
+def normalize_two_way(a, b):
+    total = a + b
 
-    # =========================
-    # FINAL SCORE MODEL
-    # =========================
-    home_score = base_home + home_advantage + form_diff + goal_factor
-    away_score = base_away - home_advantage - form_diff - goal_factor
-    draw_score = draw_bias
+    if total <= 0:
+        return 50.0, 50.0
 
-    # =========================
-    # NORMALIZATION
-    # =========================
-    total = home_score + away_score + draw_score
+    return (
+        round(a / total * 100, 2),
+        round(b / total * 100, 2),
+    )
 
-    home_win = round((home_score / total) * 100, 2)
-    away_win = round((away_score / total) * 100, 2)
-    draw = round((draw_score / total) * 100, 2)
 
-    # =========================
-    # CONFIDENCE (QUALITY INDEX)
-    # =========================
-    confidence = round(abs(home_win - away_win), 2)
+def generate_prediction(home_strength, away_strength):
 
-    # =========================
-    # OVER 2.5 (MODEL SIMULATO)
-    # =========================
-    over_2_5 = round((home_attack + away_attack) * 3, 2)
-    if over_2_5 > 80:
-        over_2_5 = 80
+    home_xg = expected_goals(home_strength, away_strength)
+    away_xg = expected_goals(away_strength, home_strength)
 
-    # =========================
-    # VALUE BET DETECTION
-    # =========================
-    value_bet = "NONE"
+    home_raw = poisson_probability(home_xg, 2) * 100
+    away_raw = poisson_probability(away_xg, 1) * 100
 
-    if home_win > 55:
-        value_bet = "HOME"
-    elif away_win > 55:
-        value_bet = "AWAY"
-    elif draw > 40:
-        value_bet = "DRAW"
+    draw_raw = max(0, 100 - (home_raw + away_raw))
 
-    # =========================
-    # RETURN FINAL MODEL
-    # =========================
+    home, draw, away = normalize_three_way(home_raw, draw_raw, away_raw)
+
+    over_yes_raw = (home_xg + away_xg) * 25
+    over_no_raw = draw * 0.5
+
+    over_yes, over_no = normalize_two_way(over_yes_raw, over_no_raw)
+
     return {
-        "home_win": home_win,
-        "away_win": away_win,
+        "home": home,
         "draw": draw,
-        "confidence": confidence,
-        "over_2_5": over_2_5,
-        "value_bet": value_bet
+        "away": away,
+        "home_xg": home_xg,
+        "away_xg": away_xg,
+        "over_2_5": {
+            "yes": over_yes,
+            "no": over_no
+        }
     }

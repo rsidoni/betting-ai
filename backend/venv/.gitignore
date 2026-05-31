@@ -1,0 +1,10 @@
+# Created by venv; see https://docs.python.org/3/library/venv.html
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+SPORTMONKS_API_KEY = os.getenv("SPORTMONKS_API_KEY")
+
+if not SPORTMONKS_API_KEY:
+    raise ValueError("SPORTMONKS_API_KEY mancante nel file .env")

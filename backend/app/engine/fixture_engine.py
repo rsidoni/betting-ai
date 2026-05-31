@@ -1,44 +1,41 @@
-import random
+from datetime import datetime
 
-def calculate_prediction(match):
 
-    # =========================
-    # BASE DATA
-    # =========================
-    home = match.get("home_team", {}).get("name", "Home")
-    away = match.get("away_team", {}).get("name", "Away")
+def process_fixtures(fixtures: list):
+    """
+    ENGINE PULIZIA MATCH:
+    - normalizza struttura
+    - filtra match invalidi
+    - rimuove dati rotti API
+    """
 
-    home_id = match.get("home_team", {}).get("id", 1)
-    away_id = match.get("away_team", {}).get("id", 2)
+    cleaned = []
 
-    # =========================
-    # STEP 3 AI (REALISTIC ENGINE V1)
-    # =========================
+    for f in fixtures:
 
-    # fake but stable “team strength” baseline
-    home_strength = (home_id % 10) + random.uniform(0, 5)
-    away_strength = (away_id % 10) + random.uniform(0, 5)
+        try:
+            name = f.get("name") or f.get("label")
 
-    # home advantage
-    home_strength += 2.0
+            if not name:
+                continue
 
-    # expected goals model (simple Poisson-like proxy)
-    home_goals = (home_strength / (away_strength + 1)) * 1.5
-    away_goals = (away_strength / (home_strength + 1)) * 1.2
+            cleaned.append({
+                "id": f.get("id"),
+                "name": name,
+                "home": f.get("home"),
+                "away": f.get("away"),
+                "league": f.get("league"),
+                "starting_at": f.get("starting_at"),
+            })
 
-    # probabilities (normalized soft model)
-    total = home_goals + away_goals + 2.5
+        except Exception as e:
+            print("Fixture engine error:", e)
+            continue
 
-    home_win = (home_goals / total) * 100
-    away_win = (away_goals / total) * 100
-    draw = (2.5 / total) * 100
+    # opzionale: ordinamento per data
+    try:
+        cleaned.sort(key=lambda x: x.get("starting_at") or "")
+    except:
+        pass
 
-    # confidence model
-    confidence = abs(home_goals - away_goals) * 10
-
-    return {
-        "home_win": round(home_win, 2),
-        "away_win": round(away_win, 2),
-        "draw": round(draw, 2),
-        "confidence": round(confidence, 2)
-    }
+    return cleaned
