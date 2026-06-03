@@ -21,15 +21,27 @@ def fetch_sportmonks_fixtures():
             "per_page": 50
         }
 
+        print("\n===== SPORTMONKS REQUEST =====")
+        print("URL:", url)
+        print("PARAMS:", params)
+
         r = requests.get(url, params=params, timeout=20)
 
+        print("SPORTMONKS STATUS:", r.status_code)
+
         if r.status_code != 200:
+            print("SPORTMONKS ERROR RESPONSE:")
+            print(r.text[:1000])
             return []
 
-        return r.json().get("data", [])
+        data = r.json().get("data", [])
+
+        print("SPORTMONKS FIXTURES FOUND:", len(data))
+
+        return data
 
     except Exception as e:
-        print("SportMonks error:", e)
+        print("SPORTMONKS EXCEPTION:", str(e))
         return []
 
 
@@ -44,29 +56,38 @@ def fetch_football_data_fixtures():
             "X-Auth-Token": FOOTBALL_DATA_API_KEY
         }
 
+        print("\n===== FOOTBALL-DATA REQUEST =====")
+        print("URL:", url)
+
         r = requests.get(url, headers=headers, timeout=20)
 
+        print("FOOTBALL-DATA STATUS:", r.status_code)
+
         if r.status_code != 200:
+            print("FOOTBALL-DATA ERROR RESPONSE:")
+            print(r.text[:1000])
             return []
 
         data = r.json().get("matches", [])
 
-        # normalize structure
+        print("FOOTBALL-DATA MATCHES FOUND:", len(data))
+
         normalized = []
+
         for m in data:
             normalized.append({
                 "id": m.get("id"),
                 "name": f"{m['homeTeam']['name']} vs {m['awayTeam']['name']}",
                 "starting_at": m.get("utcDate"),
-                "home": m['homeTeam']['name'],
-                "away": m['awayTeam']['name'],
+                "home": m["homeTeam"]["name"],
+                "away": m["awayTeam"]["name"],
                 "league": m.get("competition", {}).get("name")
             })
 
         return normalized
 
     except Exception as e:
-        print("Football-data error:", e)
+        print("FOOTBALL-DATA EXCEPTION:", str(e))
         return []
 
 
@@ -75,12 +96,28 @@ def fetch_football_data_fixtures():
 # =========================
 def fetch_upcoming_fixtures():
 
+    print("\n==============================")
+    print("START FETCH FIXTURES")
+    print("==============================")
+
     sm = fetch_sportmonks_fixtures()
+
+    print("SPORTMONKS RETURNED:", len(sm))
+
     if sm:
+        print("USING SPORTMONKS DATA")
         return sm
 
+    print("SPORTMONKS EMPTY -> TRY FOOTBALL-DATA")
+
     fb = fetch_football_data_fixtures()
+
+    print("FOOTBALL-DATA RETURNED:", len(fb))
+
     if fb:
+        print("USING FOOTBALL-DATA DATA")
         return fb
+
+    print("NO FIXTURES FROM ANY PROVIDER")
 
     return []
